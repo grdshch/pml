@@ -1,0 +1,76 @@
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+---
+
+The purpose of this work is to analyze personal activity data collected by devices like Jawbone Up, Nike FuelBand, and Fitbit, and to build a model for predicting the manner in which people did the exercises.
+
+Original data was taken from http://groupware.les.inf.puc-rio.br/har.
+
+##Data Processing
+
+Loading data replacing empty values with NA:
+```{r}
+rawTrainData <- read.csv('pml-training.csv', na.strings=c("NA",""))
+```
+
+Calculating number of NA values in columns:
+```{r}
+nas <- colSums(!is.na(rawTrainData))
+summary(nas)
+```
+
+Removing columns with too many NA:
+```{r}
+trainData <- rawTrainData[, nas > 500]
+```
+
+Removing columns which don't contain usefull information for prediction:
+```{r}
+removeIndex <- grep("timestamp|X|user_name|new_window", names(trainData))
+trainData <- trainData[, -removeIndex]
+```
+
+Number of observations and variables in processed data:
+```{r}
+dim(trainData)
+
+```
+
+## Prediction Model
+
+Random Forests are used as the prediction model.
+
+Cross validation for tuning parameters of the model:
+```{r}
+library(caret)
+fitControl <- trainControl(method="cv", number=4)
+```
+
+Separating data for "training" and "testing"" to estimate out sample error:
+```{r}
+inTraining <- createDataPartition(trainData$classe, p=.75, list=FALSE)
+training <- trainData[inTraining,]
+testing <- trainData[-inTraining,]
+```
+
+Training using selected model and cross validation:
+```{r}
+set.seed(12345)
+modFit <- train(classe~., data=training, method="rf")#, trControl=fitControl)
+```
+
+## Calculating out sample error
+
+Values predicted by the model:
+```{r}
+predicted <- predict(modFit, newdata=testing)
+```
+
+Comparing predicted data with testing subset:
+```{r}
+mx <- confusionMatrix(predicted, testing$classe)
+mx$overall
+```
+Accuracy is , estimated sample error is .
+
